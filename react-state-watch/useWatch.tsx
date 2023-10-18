@@ -1,22 +1,48 @@
 import React, { createContext, useContext, useState } from 'react';
 
+/**
+ * 原理：
+ * Updater 记录会触发 setter 的 keys
+ * 调用 watcher 的 update 方法时，拿到 update 方法入参对象的所有 key，找到监听了 key 的所有 updater。
+ * 
+ * 其实每一个
+ */
+
+interface Updater {
+  keys: string[];
+  setter: React.Dispatch<React.SetStateAction<any>>;
+}
 export class Watcher {
-  updaterMap: {
-    [key: string]: React.Dispatch<React.SetStateAction<any>>[];
-  };
+  data: any;
+  updaters: Updater[];
   constructor() {
-    this.updaterMap = {};
+    this.updaters = [];
+    this.data = {};
   }
+
   update(p: Record<string, any>) {
-    Object.keys(p).forEach(key => {
-      this.updaterMap[key].forEach(setter => {
-        setter(p);
+    this.data = {
+      ...this.data,
+      ...p
+    };
+    const activedUpdaters: Updater[] = [];
+    this.updaters.forEach(item => {
+      const actvied = Object.keys(p).some(key => item.keys.includes(key));
+      if (actvied) {
+        activedUpdaters.push(item);
+      }
+    })
+    activedUpdaters.forEach(item => {
+      item.setter({
+        ...this.data
       });
     });
   }
+
   push({ keys, setter }: { keys: string[]; setter: React.Dispatch<React.SetStateAction<any>> }) {
-    keys.forEach(key => {
-      this.updaterMap[key].push(setter);
+    this.updaters.push({
+      keys,
+      setter
     });
   }
 }
